@@ -235,7 +235,7 @@ function defineVideoController() {
           (mutation.attributeName === "src" ||
             mutation.attributeName === "currentSrc")
         ) {
-          var controller = getController(this.id);
+          var controller = getController(this.id, target);
           if (!controller) {
             return;
           }
@@ -410,7 +410,7 @@ function refreshCoolDown() {
   log("End refreshCoolDown", 5);
 }
 
-function setupListener() {
+function setupListener(target) {
   /**
    * This function is run whenever a video speed rate change occurs.
    * It is used to update the speed that shows up in the display as well as save
@@ -438,7 +438,7 @@ function setupListener() {
     runAction("blink", document, null, null);
   }
   
-  document.body.addEventListener(
+  target.addEventListener(
     "ratechange",
     function (event) {
       if (coolDown) {
@@ -460,6 +460,7 @@ function setupListener() {
         }
       } else {
         updateSpeedFromEvent(video)
+
       }
     },
     true
@@ -512,14 +513,21 @@ function getShadow(parent) {
   getChild(parent);
   return result.flat(Infinity);
 }
-function getController(id) {
-  return getShadow(document.body).filter((x) => {
+function getController(id, target) {
+  var controller = getShadow(document.body).filter((x) => {
     return (
       x.attributes["data-vscid"] &&
       x.tagName == "DIV" &&
       x.attributes["data-vscid"].value == `${id}`
     );
   })[0];
+  if (controller) {
+    return controller;
+  }
+
+  // if the controller isn't found, attempt to search the video element for the
+  // controller instead
+  return target.parentElement.querySelector(".vsc-controller");
 }
 
 function initializeNow(document) {
@@ -530,7 +538,7 @@ function initializeNow(document) {
     return;
   }
   try {
-    setupListener();
+    setupListener(document);
   } catch {
     // no operation
   }
@@ -742,12 +750,7 @@ function runAction(action, document, value, e) {
 
   mediaTags.forEach(function (v) {
     var id = v.dataset["vscid"];
-    var controller = getController(id);
-    // if the controller isn't found, attempt to search the video element for the
-    // controller instead
-    if (!controller) {
-      controller = v.parentElement.querySelector(".vsc-controller");
-    }
+    var controller = getController(id, v);
 
     // Don't change video speed if the video has a different controller
     if (e && !(targetController == controller)) {
